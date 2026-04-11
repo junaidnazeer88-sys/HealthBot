@@ -1,18 +1,22 @@
-# Node.js
-node_modules/
-npm-debug.log*
-
-# Python / ML
-ml/venv/
-__pycache__/
-*.pkl
-
-# Environment variables
+# Env files - NEVER commit
 .env
 .env.local
+.env.development
+.env.production
+.env.test
+server/.env
+client/.env
+client/.env.local
+ml/.env
 
-# macOS
+# Dependencies
+node_modules/
+venv/
+__pycache__/
+
+# Build folders
+build/
+dist/
+
+# OS files
 .DS_Store
-
-# React build
-client/build/
