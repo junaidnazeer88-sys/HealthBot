@@ -1,69 +1,72 @@
+# ml/routes/predict.py  — UPDATED version
+# Now uses the trained ML model instead of keyword fallbacks
+
 from flask import Blueprint, request, jsonify
-import joblib
-import os
+from services.ml_service import load_model, predict_diseases, is_model_ready
 
 predict_bp = Blueprint('predict', __name__)
 
-# Load model once at startup — not on every request
-MODEL_PATH = os.getenv('MODEL_PATH', 'models/disease_model.pkl')
-VECTORIZER_PATH = os.getenv('VECTORIZER_PATH', 'models/vectorizer.pkl')
-
-model = None
-vectorizer = None
-
-def load_model():
-    global model, vectorizer
-    if os.path.exists(MODEL_PATH) and os.path.exists(VECTORIZER_PATH):
-        model = joblib.load(MODEL_PATH)
-        vectorizer = joblib.load(VECTORIZER_PATH)
-        print('ML model loaded successfully')
-    else:
-        print('WARNING: Model files not found — using fallback responses')
-
-# Load on import
-load_model()
+# Load model when this module is imported
+model_loaded = load_model()
 
 @predict_bp.route('/predict', methods=['POST'])
 def predict():
     try:
-        data = request.get_json()
+        data    = request.get_json()
         message = data.get('message', '')
         history = data.get('conversation_history', [])
 
-        # If model not loaded yet — return fallback response
-        if model is None:
-            return jsonify({
-                'response': get_fallback_response(message),
-                'assessment': None,
-                'model_ready': False
-            })
+        if not message:
+            return jsonify({'error': 'message is required'}), 400
 
-        # TODO: Phase 4 — add full ML prediction here
-        # For now return smart fallback
+        # Try ML prediction
+        if is_model_ready():
+            predictions = predict_diseases(message, top_n=5)
+
+            if predictions and predictions[0]['confidence'] > 0.3:
+                top = predictions[0]
+                response = (
+                    f"Based on your symptoms, this may be "
+                    f"<strong>{top['name']} ({top['percentage']}%)</strong>. "
+                )
+                if len(predictions) > 1:
+                    others = ', '.join(
+                        f"{p['name']} ({p['percentage']}%)"
+                        for p in predictions[1:3]
+                    )
+                    response += f"Other possibilities: {others}. "
+                response += "How long have you had these symptoms?"
+
+                return jsonify({
+                    'response'   : response,
+                    'assessment' : {
+                        'predictedConditions': predictions,
+                        'severityLevel'      : None,  # set by /severity
+                    },
+                    'model_ready': True
+                })
+
+        # Fallback if model not confident enough
         return jsonify({
-            'response': get_fallback_response(message),
-            'assessment': None,
-            'model_ready': False
+            'response'   : get_fallback_response(message),
+            'assessment' : None,
+            'model_ready': is_model_ready()
         })
 
     except Exception as e:
         return jsonify({'error': str(e)}), 500
 
 
-def get_fallback_response(message):
-    """Smart keyword-based responses until ML model is trained."""
+def  get_fallback_response(message):
     msg = message.lower()
     if 'chest' in msg and ('pain' in msg or 'tight' in msg):
-        return ('EMERGENCY: Chest pain can be serious. '
-                'Please call 102 immediately.')
+        return 'EMERGENCY: Chest pain can be serious. Call 102 immediately.'
     if 'headache' in msg:
         return 'I understand you have a headache. How severe is it on a scale of 1–10? Is it on one side or both?'
     if 'fever' in msg:
         return 'How high is your temperature and how long have you had it? Any chills or body aches?'
     if 'cough' in msg:
-        return 'Is it a dry cough or with mucus? How long have you had it? Any breathlessness?'
+        return 'Is it a dry cough or with mucus? How long have you had it?'
     if 'stomach' in msg or 'abdomen' in msg:
-        return 'Where is the pain — upper, lower, or all over? Constant or comes and goes?'
-    if 'nausea' in msg or 'vomit' in msg:
-        return 'How long have you felt nauseous? Did it come on suddenly? Any fever alongside it?'
-    return 'Thank you for sharing. How long have you had this, and on a scale of 1–10, how severe is it?'
+        return 'Where is the pain — upper, lower, or all over? Constant or intermittent?'
+    return 'Thank you. How long have you had this, and on a scale of 1–10, how severe is it?'

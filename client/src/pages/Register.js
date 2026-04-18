@@ -59,12 +59,13 @@ export default function Register() {
         p: 2,
       }}
     >
+      {/* Increased maxWidth to 650 so the dropdowns have physical room to render */}
       <Paper
         elevation={0}
         sx={{
           p: 4,
           width: "100%",
-          maxWidth: 500,
+          maxWidth: 650,
           border: "0.5px solid",
           borderColor: "divider",
         }}
@@ -89,9 +90,10 @@ export default function Register() {
 
         <Box component="form" onSubmit={handleSubmit}>
           <Grid container spacing={2}>
-            <Grid item xs={12}>
+            {/* ROW 1: Name and Email */}
+            <Grid item xs={6}>
               <TextField
-                label="Full name"
+                label="Full name*"
                 name="name"
                 value={form.name}
                 onChange={handleChange}
@@ -100,9 +102,9 @@ export default function Register() {
                 size="small"
               />
             </Grid>
-            <Grid item xs={12}>
+            <Grid item xs={6}>
               <TextField
-                label="Email"
+                label="Email*"
                 name="email"
                 type="email"
                 value={form.email}
@@ -112,9 +114,11 @@ export default function Register() {
                 size="small"
               />
             </Grid>
-            <Grid item xs={12}>
+
+            {/* ROW 2: Password and Age */}
+            <Grid item xs={6}>
               <TextField
-                label="Password"
+                label="Password*"
                 name="password"
                 type="password"
                 value={form.password}
@@ -122,11 +126,9 @@ export default function Register() {
                 required
                 fullWidth
                 size="small"
-                helperText="Minimum 6 characters"
+                helperText="Min 6 characters"
               />
             </Grid>
-
-            {/* Row with Age and City (Standard Text Fields) */}
             <Grid item xs={6}>
               <TextField
                 label="Age"
@@ -138,20 +140,9 @@ export default function Register() {
                 size="small"
               />
             </Grid>
-            <Grid item xs={6}>
-              <TextField
-                label="City"
-                name="city"
-                value={form.city}
-                onChange={handleChange}
-                fullWidth
-                size="small"
-              />
-            </Grid>
 
-            {/* Row with Gender and Blood Group (Select Menus) */}
-            {/* Giving them xs=6 ensures they take up 50% of the row each */}
-            <Grid item xs={6}>
+            {/* ROW 3: Gender (25%), Blood (25%), City (50%) */}
+            <Grid item xs={3}>
               <FormControl fullWidth size="small">
                 <InputLabel id="gender-label">Gender</InputLabel>
                 <Select
@@ -167,14 +158,14 @@ export default function Register() {
                 </Select>
               </FormControl>
             </Grid>
-            <Grid item xs={6}>
+            <Grid item xs={3}>
               <FormControl fullWidth size="small">
-                <InputLabel id="blood-label">Blood group</InputLabel>
+                <InputLabel id="blood-label">Blood</InputLabel>
                 <Select
                   labelId="blood-label"
                   name="bloodGroup"
                   value={form.bloodGroup}
-                  label="Blood group"
+                  label="Blood"
                   onChange={handleChange}
                 >
                   {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(
@@ -187,7 +178,18 @@ export default function Register() {
                 </Select>
               </FormControl>
             </Grid>
+            <Grid item xs={6}>
+              <TextField
+                label="City"
+                name="city"
+                value={form.city}
+                onChange={handleChange}
+                fullWidth
+                size="small"
+              />
+            </Grid>
 
+            {/* Submit Button */}
             <Grid item xs={12}>
               <Button
                 type="submit"
@@ -196,7 +198,7 @@ export default function Register() {
                 disabled={loading}
                 sx={{ mt: 1, py: 1.2, fontWeight: "bold" }}
               >
-                {loading ? "Creating account..." : "Create account"}
+                {loading ? "Creating account..." : "CREATE ACCOUNT"}
               </Button>
             </Grid>
           </Grid>
@@ -213,8 +215,8 @@ export default function Register() {
             to="/login"
             style={{
               color: "#0ea5e9",
-              textDecoration: "none",
               fontWeight: "bold",
+              textDecoration: "none",
             }}
           >
             Sign in

@@ -1,0 +1,38 @@
+from services.nlp_service import extract_symptoms, extract_duration, extract_severity_words
+import pandas as pd
+import os
+
+# 1. Setup Data
+BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+DATA_PATH = os.path.join(BASE_DIR, 'data', 'Training.csv')
+df = pd.read_csv(DATA_PATH)
+symptom_columns = df.columns[:-1].tolist()
+
+# 2. The 6 inputs from your screenshot
+tests = [
+    'my head is killing me and i feel like throwing up',
+    'I have high fever and chills since 2 days',
+    'feeling very tired and my stomach is hurting',
+    'I have a terrible headache and blurry vision',
+    'sore throat and runny nose, sneezing a lot',
+    'chest pain and difficulty breathing'
+]
+
+print('\n=== NLP Symptom Extraction Tests ===')
+
+for text in tests:
+    # Get symptoms and the corrected text
+    # (Using the version of the function that returns a tuple)
+    found_symptoms, corrected = extract_symptoms(text, symptom_columns)
+    duration = extract_duration(text)
+    
+    # Severity logic to match your screenshot's "9/10" format
+    sev_label = extract_severity_words(text)
+    sev_score = "9" if sev_label == "URGENT" else "5"
+
+    print(f"\nInput     : {text}")
+    print(f"Symptoms  : {found_symptoms}")
+    print(f"Duration  : {duration}")
+    print(f"Severity  : {sev_score}/10")
+    print(f"Corrected : {corrected}")
+    print("-" * 40)

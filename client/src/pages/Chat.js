@@ -1,3 +1,6 @@
+// client/src/pages/Chat.js  — updated to use Socket.IO
+// Replace your existing Chat.js with this version
+
 import React, { useState, useEffect, useRef } from "react";
 import {
   Box,
@@ -8,8 +11,8 @@ import {
   Chip,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
+import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
-import api from "../services/api";
 
 const QUICK_REPLIES = [
   "I have a headache",
@@ -19,8 +22,7 @@ const QUICK_REPLIES = [
   "Cough",
   "Fatigue",
 ];
-
-const SEVERITY_COLORS = {
+const SEV_COLORS = {
   EMERGENCY: "#ef4444",
   URGENT: "#f59e0b",
   ROUTINE: "#eab308",
@@ -32,64 +34,94 @@ export default function Chat() {
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
   const [sessionId, setSessionId] = useState(null);
-  const [loading, setLoading] = useState(false);
+  const [typing, setTyping] = useState(false);
+  const [connected, setConnected] = useState(false);
   const [showQuick, setShowQuick] = useState(true);
+  const socketRef = useRef(null);
   const bottomRef = useRef(null);
 
-  // Start new conversation on mount
+  // ── Connect Socket.IO on mount ────────────────────────────────
   useEffect(() => {
-    const startChat = async () => {
-      try {
-        const res = await api.post("/chat/new");
-        setSessionId(res.data.sessionId);
-        setMessages([{ role: "bot", text: res.data.greeting }]);
-      } catch {
-        setMessages([
-          { role: "bot", text: "Hello! How are you feeling today?" },
-        ]);
-      }
-    };
-    startChat();
+    const token = localStorage.getItem("healthbot_token");
+
+    const socket = io(
+      process.env.REACT_APP_SOCKET_URL || "http://localhost:3001",
+      {
+        auth: { token }, // JWT sent with every connection
+        transports: ["websocket"], // prefer WebSocket over polling
+        reconnectionAttempts: 5,
+        reconnectionDelay: 1000,
+      },
+    );
+
+    socketRef.current = socket;
+
+    // Connected — start a new conversation
+    socket.on("connect", () => {
+      setConnected(true);
+      socket.emit("start_conversation");
+    });
+
+    // Conversation started — show greeting
+    socket.on("conversation_started", ({ sessionId: sid, greeting }) => {
+      setSessionId(sid);
+      setMessages([{ role: "bot", text: greeting, timestamp: new Date() }]);
+    });
+
+    // Bot is typing
+    socket.on("bot_typing", ({ typing: t }) => setTyping(t));
+
+    // Bot response received
+    socket.on("bot_response", ({ message, assessment, timestamp }) => {
+      setTyping(false);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: message,
+          assessment,
+          timestamp,
+        },
+      ]);
+    });
+
+    // Error
+    socket.on("error_message", ({ message: errMsg }) => {
+      setTyping(false);
+      setMessages((prev) => [...prev, { role: "bot", text: errMsg }]);
+    });
+
+    // Disconnected
+    socket.on("disconnect", () => setConnected(false));
+
+    // Clean up on unmount
+    return () => socket.disconnect();
   }, []);
 
-  // Auto-scroll to latest message
+  // Auto-scroll
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
-  }, [messages]);
+  }, [messages, typing]);
 
-  const sendMessage = async (text) => {
+  const sendMessage = (text) => {
     const msgText = text || input.trim();
-    if (!msgText || loading) return;
+    if (!msgText || typing || !socketRef.current) return;
+
     setInput("");
     setShowQuick(false);
 
-    setMessages((prev) => [...prev, { role: "user", text: msgText }]);
-    setLoading(true);
+    // Optimistically add user message to UI
+    setMessages((prev) => [
+      ...prev,
+      {
+        role: "user",
+        text: msgText,
+        timestamp: new Date(),
+      },
+    ]);
 
-    try {
-      const res = await api.post("/chat/message", {
-        message: msgText,
-        sessionId,
-      });
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          text: res.data.botResponse,
-          assessment: res.data.assessment,
-        },
-      ]);
-    } catch {
-      setMessages((prev) => [
-        ...prev,
-        {
-          role: "bot",
-          text: "Sorry, something went wrong. Please try again.",
-        },
-      ]);
-    } finally {
-      setLoading(false);
-    }
+    // Emit via Socket.IO — no HTTP request needed
+    socketRef.current.emit("send_message", { message: msgText, sessionId });
   };
 
   return (
@@ -124,8 +156,11 @@ export default function Chat() {
           <Typography fontWeight={600} fontSize={15}>
             HealthBot
           </Typography>
-          <Typography fontSize={11} color="success.main">
-            ● Online
+          <Typography
+            fontSize={11}
+            color={connected ? "success.main" : "error.main"}
+          >
+            {connected ? "● Online" : "● Reconnecting..."}
           </Typography>
         </Box>
         <Box sx={{ ml: "auto" }}>
@@ -174,9 +209,7 @@ export default function Chat() {
                 +
               </Box>
             )}
-
             <Box sx={{ maxWidth: "78%" }}>
-              {/* Severity badge */}
               {msg.assessment?.severityLevel && (
                 <Chip
                   label={msg.assessment.severityLevel}
@@ -185,10 +218,9 @@ export default function Chat() {
                     mb: 0.5,
                     fontSize: 10,
                     fontFamily: "Space Mono",
-                    bgcolor:
-                      SEVERITY_COLORS[msg.assessment.severityLevel] + "22",
-                    color: SEVERITY_COLORS[msg.assessment.severityLevel],
-                    border: `1px solid ${SEVERITY_COLORS[msg.assessment.severityLevel]}44`,
+                    bgcolor: SEV_COLORS[msg.assessment.severityLevel] + "22",
+                    color: SEV_COLORS[msg.assessment.severityLevel],
+                    border: `1px solid ${SEV_COLORS[msg.assessment.severityLevel]}44`,
                   }}
                 />
               )}
@@ -222,8 +254,8 @@ export default function Chat() {
           </Box>
         ))}
 
-        {/* Typing indicator */}
-        {loading && (
+        {/* Live typing indicator */}
+        {typing && (
           <Box sx={{ display: "flex", gap: 1, alignItems: "flex-end" }}>
             <Box
               sx={{
@@ -271,8 +303,8 @@ export default function Chat() {
         <div ref={bottomRef} />
       </Box>
 
-      {/* Quick reply chips */}
-      {showQuick && (
+      {/* Quick replies */}
+      {showQuick && messages.length > 0 && (
         <Box sx={{ display: "flex", flexWrap: "wrap", gap: 0.75, mb: 1.5 }}>
           {QUICK_REPLIES.map((q) => (
             <Chip
@@ -310,11 +342,12 @@ export default function Chat() {
             }
           }}
           placeholder="Describe your symptoms..."
+          disabled={!connected}
         />
         <IconButton
           onClick={() => sendMessage()}
           color="primary"
-          disabled={loading || !input.trim()}
+          disabled={typing || !input.trim() || !connected}
           sx={{
             bgcolor: "primary.main",
             color: "#fff",
