@@ -1,4 +1,4 @@
-require("dotenv").config(); // Fixed: lowercase 'require' and standard path
+require("dotenv").config();
 const express = require("express");
 const http = require("http");
 const socketio = require("socket.io");
@@ -19,13 +19,23 @@ const chatSocket = require("./socket/chat.socket");
 
 // Initialize App & Server
 const app = express();
+
+// Trust proxy for Render/Heroku HTTPS detection
+app.set("trust proxy", 1);
 const server = http.createServer(app);
 
-// Initialize Socket.io
+// Determine the allowed origin
+const allowedOrigin =
+  process.env.NODE_ENV === "production"
+    ? "https://healthbot-ujx0.onrender.com"
+    : "http://localhost:3000";
+
+// Initialize Socket.io with updated CORS
 const io = socketio(server, {
   cors: {
-    origin: process.env.CLIENT_URL || "http://localhost:3000",
+    origin: "*", // Allows connection from both your local machine and Render
     methods: ["GET", "POST"],
+    credentials: true,
   },
 });
 
@@ -33,8 +43,19 @@ const io = socketio(server, {
 connectDB();
 
 // 4. Global Middleware
-app.use(helmet());
-app.use(cors());
+app.use(
+  helmet({
+    contentSecurityPolicy: false, // Prevents issues with external APIs in production
+  }),
+);
+
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  }),
+);
+
 app.use(express.json());
 
 // --- Root Health Check ---
@@ -53,22 +74,18 @@ app.use("/api/users", userRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/facilities", facilityRoutes);
 
-// 6. Initialize Socket Handler (Only once!)
+// 6. Initialize Socket Handler
 chatSocket(io);
 
-// 7. Global Error Handler (Must be after routes)
+// 7. Global Error Handler
 app.use(errorMiddleware);
 
-const PORT = process.env.PORT || 3001;
-// server/server.js
+const PORT = process.env.PORT || 10000; // Updated to match Render default
 
-// Only start the server if this file is run directly
 if (require.main === module) {
   server.listen(PORT, () => {
     console.log(`🚀 HealthBot server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   });
 }
-
-// Export app for testing with supertest
-module.exports = app;
+module.exports = { app, server };
