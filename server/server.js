@@ -23,12 +23,15 @@ const app = express();
 // Trust proxy for Render/Heroku HTTPS detection
 app.set("trust proxy", 1);
 const server = http.createServer(app);
+// Determine the allowed origin dynamically
+const allowedOrigin = process.env.CLIENT_URL || "http://localhost:3000";
 
-// Determine the allowed origin
-const allowedOrigin =
-  process.env.NODE_ENV === "production"
-    ? "https://healthbot-ujx0.onrender.com"
-    : "http://localhost:3000";
+app.use(
+  cors({
+    origin: allowedOrigin,
+    credentials: true,
+  }),
+);
 
 // Initialize Socket.io with updated CORS
 const io = socketio(server, {
