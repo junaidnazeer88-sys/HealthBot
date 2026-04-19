@@ -9,11 +9,12 @@ predict_bp = Blueprint('predict', __name__)
 # Load model when this module is imported
 model_loaded = load_model()
 
-@predict_bp.route('/predict', methods=['POST'])
+@predict_bp.route('/predict', methods=['POST']) 
 def predict():
     try:
         data    = request.get_json()
-        message = data.get('message', '')
+        # Change Line 16 to this:
+        message = data.get('message') or data.get('text') or data.get('symptoms', '')
         history = data.get('conversation_history', [])
 
         if not message:
