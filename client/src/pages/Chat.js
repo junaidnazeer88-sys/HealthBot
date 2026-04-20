@@ -9,7 +9,6 @@ import {
   Container,
 } from "@mui/material";
 import SendIcon from "@mui/icons-material/Send";
-import { io } from "socket.io-client";
 import { useAuth } from "../context/AuthContext";
 
 const QUICK_REPLIES = [
@@ -28,90 +27,96 @@ const SEV_COLORS = {
   "SELF-CARE": "#22c55e",
 };
 
+// Your live Render backend URL
+const BACKEND_URL = "https://healthbot-ml-api.onrender.com";
+
 export default function Chat() {
   const { user } = useAuth();
   const [messages, setMessages] = useState([]);
   const [input, setInput] = useState("");
-  const [sessionId, setSessionId] = useState(null);
   const [typing, setTyping] = useState(false);
-  const [connected, setConnected] = useState(false);
   const [showQuick, setShowQuick] = useState(true);
-  const socketRef = useRef(null);
   const bottomRef = useRef(null);
 
+  // Initial greeting message
   useEffect(() => {
-    const token = localStorage.getItem("healthbot_token");
+    const greeting = {
+      role: "bot",
+      text: `Hello ${user?.name?.split(" ")[0] || "there"}! I am your HealthBot. Please describe your symptoms.`,
+      timestamp: new Date(),
+    };
+    setMessages([greeting]);
+  }, [user]);
 
-    const socket = io(
-      process.env.REACT_APP_SOCKET_URL ||
-        "https://healthbot-ml-api.onrender.com",
-      {
-        auth: { token },
-        transports: ["websocket"],
-        reconnectionAttempts: 5,
-        reconnectionDelay: 1000,
-      },
-    );
-
-    socketRef.current = socket;
-
-    socket.on("connect", () => {
-      setConnected(true);
-      socket.emit("start_conversation");
-    });
-
-    socket.on("conversation_started", ({ sessionId: sid, greeting }) => {
-      setSessionId(sid);
-      setMessages([{ role: "bot", text: greeting, timestamp: new Date() }]);
-    });
-
-    socket.on("bot_typing", ({ typing: t }) => setTyping(t));
-
-    socket.on("bot_response", ({ message, assessment, timestamp }) => {
-      setTyping(false);
-      setMessages((prev) => [
-        ...prev,
-        { role: "bot", text: message, assessment, timestamp },
-      ]);
-    });
-
-    socket.on("error_message", ({ message: errMsg }) => {
-      setTyping(false);
-      setMessages((prev) => [...prev, { role: "bot", text: errMsg }]);
-    });
-
-    socket.on("disconnect", () => setConnected(false));
-
-    return () => socket.disconnect();
-  }, []);
-
+  // Auto-scroll to bottom of chat
   useEffect(() => {
     bottomRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages, typing]);
 
-  const sendMessage = (text) => {
+  const sendMessage = async (text) => {
     const msgText = text || input.trim();
-    if (!msgText || typing || !socketRef.current) return;
+    if (!msgText || typing) return;
 
     setInput("");
     setShowQuick(false);
 
-    setMessages((prev) => [
-      ...prev,
-      { role: "user", text: msgText, timestamp: new Date() },
-    ]);
+    // 1. Update UI with user message
+    const newUserMessage = {
+      role: "user",
+      text: msgText,
+      timestamp: new Date(),
+    };
+    setMessages((prev) => [...prev, newUserMessage]);
+    setTyping(true);
 
-    socketRef.current.emit("send_message", { message: msgText, sessionId });
+    try {
+      // 2. Call the Flask API on Render
+      const response = await fetch(`${BACKEND_URL}/predict`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ symptoms: msgText }),
+      });
+
+      if (!response.ok) throw new Error("Backend connection failed");
+
+      const data = await response.json();
+
+      // 3. Update UI with bot prediction
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text:
+            data.prediction || data.message || "I have analyzed your input.",
+          assessment: data.assessment,
+          timestamp: new Date(),
+        },
+      ]);
+    } catch (error) {
+      console.error("Connection Error:", error);
+      setMessages((prev) => [
+        ...prev,
+        {
+          role: "bot",
+          text: "I am having trouble reaching the medical server. It might be waking up—please try again in 30 seconds.",
+          timestamp: new Date(),
+        },
+      ]);
+    } finally {
+      setTyping(false);
+    }
   };
 
   return (
     <Box
       sx={{
-        height: "calc(100vh - 64px)", // Adjusted for Navbar height
+        height: "calc(100vh - 64px)",
         display: "flex",
         flexDirection: "column",
         bgcolor: "background.default",
-        overflow: "hidden", // CRITICAL: Prevents body scroll
+        overflow: "hidden",
       }}
     >
       <Container
@@ -124,7 +129,7 @@ export default function Chat() {
           pb: 1,
         }}
       >
-        {/* Header */}
+        {/* Header Section */}
         <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
           <Box
             sx={{
@@ -142,37 +147,29 @@ export default function Chat() {
           </Box>
           <Box>
             <Typography fontWeight={600} fontSize={15}>
-              HealthBot
+              HealthBot ML
             </Typography>
-            <Typography
-              fontSize={11}
-              color={connected ? "success.main" : "error.main"}
-            >
-              {connected ? "● Online" : "● Connecting..."}
+            <Typography fontSize={11} color="success.main">
+              ● System Active (Cloud)
             </Typography>
           </Box>
           <Box sx={{ ml: "auto" }}>
             <Typography fontSize={12} color="text.secondary">
-              {user?.name && `Hello, ${user.name.split(" ")[0]}`}
+              {user?.name && `User: ${user.name.split(" ")[0]}`}
             </Typography>
           </Box>
         </Box>
 
-        {/* Messages Area */}
+        {/* Chat Message History */}
         <Box
           sx={{
-            flex: 1, // Grows to fill all available middle space
+            flex: 1,
             overflowY: "auto",
             display: "flex",
             flexDirection: "column",
             gap: 1.5,
             pr: 1,
             mb: 2,
-            "&::-webkit-scrollbar": { width: "6px" },
-            "&::-webkit-scrollbar-thumb": {
-              bgcolor: "divider",
-              borderRadius: "10px",
-            },
           }}
         >
           {messages.map((msg, i) => (
@@ -231,7 +228,6 @@ export default function Chat() {
                 >
                   <Typography
                     fontSize={13}
-                    lineHeight={1.6}
                     dangerouslySetInnerHTML={{ __html: msg.text }}
                   />
                 </Paper>
@@ -239,14 +235,18 @@ export default function Chat() {
             </Box>
           ))}
           {typing && (
-            <Typography fontSize={12} color="text.secondary" sx={{ ml: 4 }}>
-              Bot is typing...
+            <Typography
+              fontSize={12}
+              color="text.secondary"
+              sx={{ ml: 4, fontStyle: "italic" }}
+            >
+              Bot is analyzing symptoms...
             </Typography>
           )}
           <div ref={bottomRef} />
         </Box>
 
-        {/* Quick Replies */}
+        {/* Quick Suggestion Chips */}
         {showQuick && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
             {QUICK_REPLIES.map((q) => (
@@ -262,7 +262,7 @@ export default function Chat() {
           </Box>
         )}
 
-        {/* Fixed Input Area */}
+        {/* Bottom Input Field */}
         <Box sx={{ pb: 1, bgcolor: "background.default" }}>
           <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
             <TextField
@@ -271,13 +271,12 @@ export default function Chat() {
               value={input}
               onChange={(e) => setInput(e.target.value)}
               onKeyDown={(e) => e.key === "Enter" && sendMessage()}
-              placeholder="Type your symptoms here..."
-              sx={{ bgcolor: "background.paper", borderRadius: 1 }}
+              placeholder="Enter your health concern..."
             />
             <IconButton
               onClick={() => sendMessage()}
               color="primary"
-              disabled={!input.trim()}
+              disabled={!input.trim() || typing}
               sx={{
                 bgcolor: "primary.main",
                 color: "#fff",
@@ -293,12 +292,11 @@ export default function Chat() {
             textAlign="center"
             mt={1}
           >
-            Preliminary assessment only — not a substitute for medical advice
+            This is an AI prototype — Always seek professional medical advice
+            for emergencies.
           </Typography>
         </Box>
       </Container>
-
-      <style>{`@keyframes blink{0%,80%,100%{opacity:.2}40%{opacity:1}}`}</style>
     </Box>
   );
 }
