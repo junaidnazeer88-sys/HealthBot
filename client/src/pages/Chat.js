@@ -43,7 +43,8 @@ export default function Chat() {
     const token = localStorage.getItem("healthbot_token");
 
     const socket = io(
-      process.env.REACT_APP_SOCKET_URL || "http://localhost:3001",
+      process.env.REACT_APP_SOCKET_URL ||
+        "https://healthbot-ml-api.onrender.com",
       {
         auth: { token },
         transports: ["websocket"],
