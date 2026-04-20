@@ -60,7 +60,6 @@ export default function Chat() {
     setInput("");
     setShowQuick(false);
 
-    // 1. Update UI with user message
     const newUserMessage = {
       role: "user",
       text: msgText,
@@ -70,12 +69,9 @@ export default function Chat() {
     setTyping(true);
 
     try {
-      // 2. Call the Flask API on Render
       const response = await fetch(`${BACKEND_URL}/predict`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ symptoms: msgText }),
       });
 
@@ -83,13 +79,12 @@ export default function Chat() {
 
       const data = await response.json();
 
-      // 3. Update UI with bot prediction
       setMessages((prev) => [
         ...prev,
         {
           role: "bot",
-          text:
-            data.prediction || data.message || "I have analyzed your input.",
+          // Maps to the 'response' key from your Python backend logic
+          text: data.response || "Analysis complete.",
           assessment: data.assessment,
           timestamp: new Date(),
         },
@@ -100,7 +95,7 @@ export default function Chat() {
         ...prev,
         {
           role: "bot",
-          text: "I am having trouble reaching the medical server. It might be waking up—please try again in 30 seconds.",
+          text: "Trouble reaching the medical server. Please try again in 30 seconds.",
           timestamp: new Date(),
         },
       ]);
@@ -129,38 +124,40 @@ export default function Chat() {
           pb: 1,
         }}
       >
-        {/* Header Section */}
-        <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 2 }}>
-          <Box
-            sx={{
-              width: 36,
-              height: 36,
-              borderRadius: "50%",
-              bgcolor: "primary.main",
-              display: "flex",
-              alignItems: "center",
-              justifyContent: "center",
-              color: "#fff",
-            }}
+        {/* HEADER SECTION: Unified Green Theme */}
+        <Box
+          sx={{
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "space-between",
+            mb: 2,
+            px: 1,
+          }}
+        >
+          <Box sx={{ display: "flex", alignItems: "center", gap: 1 }}>
+            <Box
+              sx={{
+                width: 10,
+                height: 10,
+                borderRadius: "50%",
+                bgcolor: "#2e7d32",
+                animation: "pulse 2s infinite",
+              }}
+            />
+            <Typography
+              sx={{ color: "#2e7d32", fontWeight: "bold", fontSize: "0.85rem" }}
+            >
+              HealthBot ML | System Active
+            </Typography>
+          </Box>
+          <Typography
+            sx={{ color: "#2e7d32", fontWeight: "bold", fontSize: "0.85rem" }}
           >
-            +
-          </Box>
-          <Box>
-            <Typography fontWeight={600} fontSize={15}>
-              HealthBot ML
-            </Typography>
-            <Typography fontSize={11} color="success.main">
-              ● System Active (Cloud)
-            </Typography>
-          </Box>
-          <Box sx={{ ml: "auto" }}>
-            <Typography fontSize={12} color="text.secondary">
-              {user?.name && `User: ${user.name.split(" ")[0]}`}
-            </Typography>
-          </Box>
+            User: {user?.name || "Junaid Nazeer"}
+          </Typography>
         </Box>
 
-        {/* Chat Message History */}
+        {/* CHAT HISTORY */}
         <Box
           sx={{
             flex: 1,
@@ -185,14 +182,13 @@ export default function Chat() {
               {msg.role === "bot" && (
                 <Box
                   sx={{
-                    width: 26,
-                    height: 26,
+                    width: 30,
+                    height: 30,
                     borderRadius: "50%",
                     bgcolor: "primary.main",
                     display: "flex",
                     alignItems: "center",
                     justifyContent: "center",
-                    fontSize: 12,
                     color: "#fff",
                     flexShrink: 0,
                   }}
@@ -202,51 +198,60 @@ export default function Chat() {
               )}
               <Box sx={{ maxWidth: "80%" }}>
                 {msg.assessment?.severityLevel && (
-                  <Chip
-                    label={msg.assessment.severityLevel}
-                    size="small"
+                  <Typography
                     sx={{
+                      fontSize: "10px",
+                      fontWeight: "bold",
+                      color: SEV_COLORS[msg.assessment.severityLevel] || "#666",
                       mb: 0.5,
-                      fontSize: 10,
-                      bgcolor: SEV_COLORS[msg.assessment.severityLevel] + "22",
-                      color: SEV_COLORS[msg.assessment.severityLevel],
+                      ml: 0.5,
                     }}
-                  />
+                  >
+                    ● {msg.assessment.severityLevel}
+                  </Typography>
                 )}
                 <Paper
                   elevation={0}
                   sx={{
-                    px: 1.5,
-                    py: 1,
+                    px: 2,
+                    py: 1.5,
                     borderRadius: 2,
-                    bgcolor:
-                      msg.role === "user" ? "primary.main" : "background.paper",
-                    color: msg.role === "user" ? "#fff" : "text.primary",
+                    bgcolor: msg.role === "user" ? "primary.main" : "#f5f5f5",
+                    color: msg.role === "user" ? "#fff" : "#000",
                     border: msg.role === "bot" ? "1px solid" : "none",
-                    borderColor: "divider",
+                    borderColor: msg.assessment?.severityLevel
+                      ? SEV_COLORS[msg.assessment.severityLevel]
+                      : "#e0e0e0",
                   }}
                 >
                   <Typography
-                    fontSize={13}
+                    fontSize={14}
                     dangerouslySetInnerHTML={{ __html: msg.text }}
                   />
                 </Paper>
               </Box>
             </Box>
           ))}
+
+          {/* TYPING INDICATOR: Bold Blue */}
           {typing && (
             <Typography
-              fontSize={12}
-              color="text.secondary"
-              sx={{ ml: 4, fontStyle: "italic" }}
+              sx={{
+                ml: 6,
+                mb: 2,
+                color: "#1976d2",
+                fontWeight: "bold",
+                fontStyle: "italic",
+                fontSize: "0.85rem",
+              }}
             >
-              Bot is analyzing symptoms...
+              ● HealthBot is analyzing symptoms...
             </Typography>
           )}
           <div ref={bottomRef} />
         </Box>
 
-        {/* Quick Suggestion Chips */}
+        {/* QUICK REPLIES */}
         {showQuick && (
           <Box sx={{ display: "flex", flexWrap: "wrap", gap: 1, mb: 2 }}>
             {QUICK_REPLIES.map((q) => (
@@ -262,9 +267,9 @@ export default function Chat() {
           </Box>
         )}
 
-        {/* Bottom Input Field */}
-        <Box sx={{ pb: 1, bgcolor: "background.default" }}>
-          <Box sx={{ display: "flex", gap: 1, alignItems: "center" }}>
+        {/* INPUT & PROTOTYPE WARNING */}
+        <Box sx={{ pb: 1 }}>
+          <Box sx={{ display: "flex", gap: 1, alignItems: "center", mb: 1.5 }}>
             <TextField
               fullWidth
               size="small"
@@ -275,7 +280,6 @@ export default function Chat() {
             />
             <IconButton
               onClick={() => sendMessage()}
-              color="primary"
               disabled={!input.trim() || typing}
               sx={{
                 bgcolor: "primary.main",
@@ -286,13 +290,18 @@ export default function Chat() {
               <SendIcon />
             </IconButton>
           </Box>
+
+          {/* PROTOTYPE WARNING: Bold Green Visibility */}
           <Typography
-            fontSize={10}
-            color="text.disabled"
-            textAlign="center"
-            mt={1}
+            sx={{
+              color: "#2e7d32",
+              textAlign: "center",
+              fontWeight: "bold",
+              fontSize: "0.75rem",
+              letterSpacing: "0.5px",
+            }}
           >
-            This is an AI prototype — Always seek professional medical advice
+            THIS IS AN AI PROTOTYPE — Always seek professional medical advice
             for emergencies.
           </Typography>
         </Box>
