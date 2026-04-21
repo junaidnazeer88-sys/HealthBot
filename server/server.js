@@ -77,10 +77,12 @@ chatSocket(io);
 // 6. Global Error Handler (MUST BE LAST)
 app.use(errorMiddleware);
 
-const PORT = process.env.PORT || 10000;
+// Ensure we use Render's dynamic port, or default to 5000 for local testing
+const PORT = process.env.PORT || 5000;
 
 if (require.main === module) {
-  server.listen(PORT, () => {
+  // Adding "0.0.0.0" is critical for Render to accept outside traffic
+  server.listen(PORT, "0.0.0.0", () => {
     console.log(`🚀 HealthBot server running on port ${PORT}`);
     console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   });
