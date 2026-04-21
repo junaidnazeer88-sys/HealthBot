@@ -1,7 +1,8 @@
 import axios from "axios";
 
 const api = axios.create({
-  baseURL: process.env.REACT_APP_API_URL || "http://localhost:3001/api",
+  // Line 4 Change:
+  baseURL: "https://healthbot-ml-api.onrender.com/api",
 });
 
 // This automatically attaches your JWT token to every request
