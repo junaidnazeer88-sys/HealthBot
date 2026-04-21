@@ -318,6 +318,7 @@ export default function Chat() {
             </Box>
           </Box>
 
+          {/* User Name Badge - Pure White and Bold for maximum visibility */}
           <Box
             sx={{
               px: 1.5,
@@ -452,14 +453,16 @@ export default function Chat() {
                       sx={{ fontSize: 13.5, lineHeight: 1.65 }}
                       dangerouslySetInnerHTML={{ __html: msg.text }}
                     />
+                    {/* Timestamp Fix - Pure white and 100% visible for the Presentation */}
                     <Typography
                       sx={{
                         fontSize: 9.5,
                         mt: 0.5,
-                        opacity: 0.8,
+                        opacity: 1,
                         textAlign: isUser ? "right" : "left",
                         fontFamily: "'Space Mono', monospace",
-                        color: isUser ? "#fff" : C.textMid,
+                        color: "#ffffff",
+                        fontWeight: 500,
                       }}
                     >
                       {timeNow()}
@@ -604,24 +607,20 @@ export default function Chat() {
             placeholder="Describe your symptoms in detail..."
             InputProps={{ disableUnderline: true }}
             sx={{
-              "& .MuiInputBase-root": {
-                padding: 0,
-                display: "flex",
-                alignItems: "center",
-              },
+              "& .MuiInputBase-root": { padding: 0 },
               "& textarea, & input": {
                 color: `${C.text} !important`,
                 fontSize: "13.5px",
                 lineHeight: 1.6,
-                padding: "10px 0px",
+                padding: "10px 12px",
                 caretColor: C.accent,
-                textAlign: "center", // CENTERING LOGIC
+                textAlign: "left", // Strictly LEFT ALIGNED
                 width: "100%",
               },
               "& textarea::placeholder, & input::placeholder": {
                 color: `${C.textMid} !important`,
                 opacity: "1 !important",
-                textAlign: "center", // PLACEHOLDER CENTERING
+                textAlign: "left", // Strictly LEFT ALIGNED
                 width: "100%",
               },
             }}
