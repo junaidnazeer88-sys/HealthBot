@@ -174,7 +174,7 @@ export default function Chat() {
   useEffect(() => {
     const startChat = async () => {
       try {
-        const res = await api.post("/chat/new");
+        const res = await api.post("/api/chat/new");
         setSessionId(res.data.sessionId);
         setMessages([{ role: "bot", text: res.data.greeting }]);
       } catch {
@@ -204,7 +204,7 @@ export default function Chat() {
     setTyping(true);
 
     try {
-      const res = await api.post("/chat/message", {
+      const res = await api.post("/api/chat/message", {
         message: msg,
         sessionId,
       });
