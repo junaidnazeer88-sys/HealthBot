@@ -20,12 +20,12 @@ const chatSocket = require("./socket/chat.socket");
 // Initialize App & Server
 const app = express();
 
-// Trust proxy for Render/Heroku HTTPS detection
-app.set("trust proxy", 1);
-const server = http.createServer(app);
-// Determine the allowed origin dynamically
-const allowedOrigin = process.env.CLIENT_URL || "http://localhost:3000";
+// --- CRITICAL ORDER CHANGE ---
+// 1. Parser and CORS must come FIRST
+app.use(express.json());
+app.use(express.urlencoded({ extended: true }));
 
+const allowedOrigin = process.env.CLIENT_URL || "http://localhost:3000";
 app.use(
   cors({
     origin: allowedOrigin,
@@ -33,10 +33,20 @@ app.use(
   }),
 );
 
-// Initialize Socket.io with updated CORS
+// 2. Security and Proxy
+app.set("trust proxy", 1);
+app.use(
+  helmet({
+    contentSecurityPolicy: false,
+  }),
+);
+
+const server = http.createServer(app);
+
+// Initialize Socket.io
 const io = socketio(server, {
   cors: {
-    origin: "*", // Allows connection from both your local machine and Render
+    origin: "*",
     methods: ["GET", "POST"],
     credentials: true,
   },
@@ -45,22 +55,7 @@ const io = socketio(server, {
 // 3. Connect to Database
 connectDB();
 
-// 4. Global Middleware
-app.use(
-  helmet({
-    contentSecurityPolicy: false, // Prevents issues with external APIs in production
-  }),
-);
-
-app.use(
-  cors({
-    origin: allowedOrigin,
-    credentials: true,
-  }),
-);
-
-app.use(express.json());
-
+// 4. API Routes
 // --- Root Health Check ---
 app.get("/api/health-check", (req, res) => {
   res.status(200).json({
@@ -70,20 +65,19 @@ app.get("/api/health-check", (req, res) => {
   });
 });
 
-// 5. API Routes
 app.use("/api/auth", authRoutes);
 app.use("/api/chat", chatRoutes);
 app.use("/api/users", userRoutes);
 app.use("/api/health", healthRoutes);
 app.use("/api/facilities", facilityRoutes);
 
-// 6. Initialize Socket Handler
+// 5. Initialize Socket Handler
 chatSocket(io);
 
-// 7. Global Error Handler
+// 6. Global Error Handler (MUST BE LAST)
 app.use(errorMiddleware);
 
-const PORT = process.env.PORT || 10000; // Updated to match Render default
+const PORT = process.env.PORT || 10000;
 
 if (require.main === module) {
   server.listen(PORT, () => {
@@ -91,4 +85,5 @@ if (require.main === module) {
     console.log(`🌍 Environment: ${process.env.NODE_ENV || "development"}`);
   });
 }
+
 module.exports = { app, server };
