@@ -39,7 +39,7 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      const res = await api.post("/auth/register", form);
+      const res = await api.post("/api/auth/register", form);
       login(res.data.user, res.data.token);
       navigate("/chat");
     } catch (err) {
