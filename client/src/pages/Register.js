@@ -151,7 +151,8 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      // UPDATED LINE: Added /api prefix to align with server.js
+      // THE FIX: Changed from "/api/auth/register" to "/auth/register"
+      // This matches the Flask Blueprint and avoids double-prefixing.
       const res = await api.post("/auth/register", form);
       login(res.data.user, res.data.token);
       navigate("/chat");
