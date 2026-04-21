@@ -152,7 +152,7 @@ export default function Register() {
     setLoading(true);
     try {
       // UPDATED LINE: Added /api prefix to align with server.js
-      const res = await api.post("/api/auth/register", form);
+      const res = await api.post("/auth/register", form);
       login(res.data.user, res.data.token);
       navigate("/chat");
     } catch (err) {
