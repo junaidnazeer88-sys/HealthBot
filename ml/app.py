@@ -13,7 +13,7 @@ def create_app():
     # ── CORS ───────────────────────────────────────────────────────
     # In production, set ALLOWED_ORIGINS to your Render backend URL
     # e.g. https://healthbot-backend.onrender.com
-    allowed_origins = os.getenv('ALLOWED_ORIGINS', '*').split(',')
+    allowed_origins = os.getenv('CLIENT_URL', '*').split(',')
     CORS(app, origins=allowed_origins)
 
     # ── AUTO-TRAIN LOGIC ───────────────────────────────────────────
