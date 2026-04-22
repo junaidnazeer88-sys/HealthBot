@@ -27,18 +27,18 @@ const C = {
   text: "#e2e8f0",
   textMid: "#94a3b8",
   textDim: "#475569",
-  error: "#f87171",
+  errorRed: "#f87171",
 };
 
-/* ── Reusable styled text field ── */
-function DarkField({ label, required, ...props }) {
+/* ── Reusable dark text field ── */
+function DarkField({ label, helperText, ...props }) {
   return (
     <TextField
       label={label}
-      required={required}
       fullWidth
       size="small"
       variant="outlined"
+      helperText={helperText}
       {...props}
       sx={{
         "& .MuiOutlinedInput-root": {
@@ -62,14 +62,19 @@ function DarkField({ label, required, ...props }) {
           color: `${C.text} !important`,
           "&::placeholder": { color: C.textDim, opacity: 1 },
         },
-        ...props.sx,
+        "& .MuiFormHelperText-root": {
+          color: C.textDim,
+          fontSize: 11,
+          ml: 0.5,
+        },
+        ...(props.sx || {}),
       }}
     />
   );
 }
 
-/* ── Reusable styled select ── */
-function DarkSelect({ label, value, onChange, name, children }) {
+/* ── Reusable dark select — full label always visible ── */
+function DarkSelect({ label, name, value, onChange, options }) {
   return (
     <FormControl fullWidth size="small">
       <InputLabel
@@ -97,9 +102,9 @@ function DarkSelect({ label, value, onChange, name, children }) {
           },
           "&.Mui-focused .MuiOutlinedInput-notchedOutline": {
             borderColor: C.borderHi,
+            boxShadow: `0 0 0 3px rgba(14,165,233,0.08)`,
           },
           "& .MuiSvgIcon-root": { color: C.textMid },
-          "& .MuiSelect-select": { py: 1.1 },
         }}
         MenuProps={{
           PaperProps: {
@@ -108,21 +113,27 @@ function DarkSelect({ label, value, onChange, name, children }) {
               border: `0.5px solid ${C.border}`,
               borderRadius: "10px",
               mt: 0.5,
+              boxShadow: "0 8px 32px rgba(0,0,0,0.4)",
               "& .MuiMenuItem-root": {
                 color: C.text,
                 fontSize: 13.5,
+                py: 1,
                 "&:hover": { bgcolor: "rgba(14,165,233,0.1)" },
                 "&.Mui-selected": {
-                  bgcolor: "rgba(14,165,233,0.15)",
+                  bgcolor: "rgba(14,165,233,0.18)",
                   color: C.accent,
-                  "&:hover": { bgcolor: "rgba(14,165,233,0.2)" },
+                  "&:hover": { bgcolor: "rgba(14,165,233,0.22)" },
                 },
               },
             },
           },
         }}
       >
-        {children}
+        {options.map((opt) => (
+          <MenuItem key={opt} value={opt}>
+            {opt}
+          </MenuItem>
+        ))}
       </Select>
     </FormControl>
   );
@@ -151,8 +162,6 @@ export default function Register() {
     setError("");
     setLoading(true);
     try {
-      // THE FIX: Changed from "/api/auth/register" to "/auth/register"
-      // This matches the Flask Blueprint and avoids double-prefixing.
       const res = await api.post("/auth/register", form);
       login(res.data.user, res.data.token);
       navigate("/chat");
@@ -204,21 +213,21 @@ export default function Register() {
           <Box sx={{ display: "flex", alignItems: "center", gap: 1.5, mb: 3 }}>
             <Box
               sx={{
-                width: 40,
-                height: 40,
-                borderRadius: "11px",
+                width: 42,
+                height: 42,
+                borderRadius: "12px",
+                flexShrink: 0,
                 background: `linear-gradient(135deg, ${C.accent}, ${C.green})`,
                 display: "flex",
                 alignItems: "center",
                 justifyContent: "center",
-                boxShadow: `0 0 18px rgba(14,165,233,0.35)`,
-                flexShrink: 0,
+                boxShadow: `0 0 20px rgba(14,165,233,0.35)`,
               }}
             >
               <Typography
                 sx={{
                   color: "#fff",
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: 700,
                   lineHeight: 1,
                 }}
@@ -229,7 +238,7 @@ export default function Register() {
             <Box>
               <Typography
                 sx={{
-                  fontSize: 20,
+                  fontSize: 22,
                   fontWeight: 700,
                   color: C.text,
                   fontFamily: "'Space Mono', monospace",
@@ -238,13 +247,13 @@ export default function Register() {
               >
                 Create account
               </Typography>
-              <Typography sx={{ fontSize: 12, color: C.textMid, mt: 0.25 }}>
+              <Typography sx={{ fontSize: 12, color: C.textMid, mt: 0.3 }}>
                 Join HealthBot — it's free
               </Typography>
             </Box>
           </Box>
 
-          {/* ── Error alert ── */}
+          {/* ── Error ── */}
           {error && (
             <Alert
               severity="error"
@@ -253,9 +262,9 @@ export default function Register() {
                 fontSize: 12,
                 borderRadius: "10px",
                 bgcolor: "rgba(248,113,113,0.1)",
-                color: C.error,
+                color: C.errorRed,
                 border: `0.5px solid rgba(248,113,113,0.3)`,
-                "& .MuiAlert-icon": { color: C.error },
+                "& .MuiAlert-icon": { color: C.errorRed },
               }}
             >
               {error}
@@ -265,6 +274,7 @@ export default function Register() {
           {/* ── Form ── */}
           <Box component="form" onSubmit={handleSubmit}>
             <Grid container spacing={1.75}>
+              {/* Full name */}
               <Grid item xs={12}>
                 <DarkField
                   label="Full name"
@@ -276,6 +286,7 @@ export default function Register() {
                 />
               </Grid>
 
+              {/* Email */}
               <Grid item xs={12}>
                 <DarkField
                   label="Email address"
@@ -287,6 +298,7 @@ export default function Register() {
                 />
               </Grid>
 
+              {/* Password */}
               <Grid item xs={12}>
                 <DarkField
                   label="Password"
@@ -296,13 +308,11 @@ export default function Register() {
                   onChange={handleChange}
                   required
                   helperText="Minimum 6 characters"
-                  FormHelperTextProps={{
-                    sx: { color: C.textDim, fontSize: 11, ml: 0.5 },
-                  }}
                 />
               </Grid>
 
-              <Grid item xs={6}>
+              {/* Age — half */}
+              <Grid item xs={12} sm={6}>
                 <DarkField
                   label="Age"
                   name="age"
@@ -313,37 +323,8 @@ export default function Register() {
                 />
               </Grid>
 
-              <Grid item xs={6}>
-                <DarkSelect
-                  label="Gender"
-                  name="gender"
-                  value={form.gender}
-                  onChange={handleChange}
-                >
-                  <MenuItem value="Male">Male</MenuItem>
-                  <MenuItem value="Female">Female</MenuItem>
-                  <MenuItem value="Other">Other</MenuItem>
-                </DarkSelect>
-              </Grid>
-
-              <Grid item xs={6}>
-                <DarkSelect
-                  label="Blood group"
-                  name="bloodGroup"
-                  value={form.bloodGroup}
-                  onChange={handleChange}
-                >
-                  {["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"].map(
-                    (bg) => (
-                      <MenuItem key={bg} value={bg}>
-                        {bg}
-                      </MenuItem>
-                    ),
-                  )}
-                </DarkSelect>
-              </Grid>
-
-              <Grid item xs={6}>
+              {/* City — half */}
+              <Grid item xs={12} sm={6}>
                 <DarkField
                   label="City"
                   name="city"
@@ -352,6 +333,29 @@ export default function Register() {
                 />
               </Grid>
 
+              {/* Gender — half — FULL LABEL VISIBLE */}
+              <Grid item xs={12} sm={6}>
+                <DarkSelect
+                  label="Gender"
+                  name="gender"
+                  value={form.gender}
+                  onChange={handleChange}
+                  options={["Male", "Female", "Other"]}
+                />
+              </Grid>
+
+              {/* Blood Group — half — FULL LABEL VISIBLE */}
+              <Grid item xs={12} sm={6}>
+                <DarkSelect
+                  label="Blood group"
+                  name="bloodGroup"
+                  value={form.bloodGroup}
+                  onChange={handleChange}
+                  options={["A+", "A-", "B+", "B-", "O+", "O-", "AB+", "AB-"]}
+                />
+              </Grid>
+
+              {/* Submit */}
               <Grid item xs={12}>
                 <Button
                   type="submit"
@@ -359,29 +363,26 @@ export default function Register() {
                   disabled={loading}
                   sx={{
                     mt: 0.5,
-                    py: 1.3,
+                    py: 1.4,
                     borderRadius: "10px",
                     fontSize: 13.5,
-                    fontWeight: 600,
+                    fontWeight: 700,
                     fontFamily: "'Space Mono', monospace",
-                    letterSpacing: 0.5,
-                    background: loading
-                      ? C.surfaceHi
-                      : `linear-gradient(135deg, ${C.accent}, #0284c7)`,
-                    color: loading ? C.textDim : "#fff",
-                    boxShadow: loading
-                      ? "none"
-                      : `0 4px 16px rgba(14,165,233,0.35)`,
+                    letterSpacing: 0.8,
                     textTransform: "uppercase",
+                    background: `linear-gradient(135deg, ${C.accent}, #0284c7)`,
+                    color: "#fff",
+                    boxShadow: `0 4px 16px rgba(14,165,233,0.35)`,
                     transition: "all .2s",
                     "&:hover": {
                       background: `linear-gradient(135deg, #38bdf8, ${C.accent})`,
-                      boxShadow: `0 6px 20px rgba(14,165,233,0.45)`,
+                      boxShadow: `0 6px 24px rgba(14,165,233,0.5)`,
                       transform: "translateY(-1px)",
                     },
                     "&:disabled": {
                       background: C.surfaceHi,
                       color: C.textDim,
+                      boxShadow: "none",
                     },
                   }}
                 >
@@ -391,6 +392,7 @@ export default function Register() {
             </Grid>
           </Box>
 
+          {/* ── Sign in link ── */}
           <Typography
             sx={{
               textAlign: "center",
@@ -413,6 +415,7 @@ export default function Register() {
           </Typography>
         </Box>
 
+        {/* ── Disclaimer ── */}
         <Typography
           sx={{
             textAlign: "center",
