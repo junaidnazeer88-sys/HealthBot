@@ -7,7 +7,7 @@ const {
   getHistory,
   getConversation,
   deleteConversation,
-} = require("../controllers/chatController");
+} = require("../controllers/chat.controller");
 
 // All chat features require the user to be logged in
 router.use(protect);
