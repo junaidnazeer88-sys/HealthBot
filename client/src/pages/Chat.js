@@ -214,7 +214,7 @@ export default function Chat() {
       );
 
       // ─── 2. Call Node.js Server to save history ───
-      const res = await api.post("/api/chat/message", {
+      const res = await api.post("/chat/message", {
         message: msg,
         sessionId,
       });
