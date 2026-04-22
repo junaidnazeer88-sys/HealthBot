@@ -63,7 +63,7 @@ exports.sendMessage = async (req, res) => {
     // Call Python ML Server
     try {
       const mlRes = await axios.post(
-        `${process.env.FLASK_ML_URL}/predict`,
+        `${process.env.FLASK_ML_URL}/api/predict`,
         {
           message,
           conversation_history: recentHistory,
@@ -101,14 +101,12 @@ exports.sendMessage = async (req, res) => {
     }
 
     await conversation.save();
-    res
-      .status(200)
-      .json({
-        success: true,
-        sessionId: conversation.sessionId,
-        botResponse,
-        assessment,
-      });
+    res.status(200).json({
+      success: true,
+      sessionId: conversation.sessionId,
+      botResponse,
+      assessment,
+    });
   } catch (error) {
     res.status(500).json({ success: false, message: error.message });
   }
