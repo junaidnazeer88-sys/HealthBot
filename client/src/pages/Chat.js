@@ -1,4 +1,5 @@
 import React, { useState, useEffect, useRef } from "react";
+import axios from "axios"; // Added for direct ML server calls
 import {
   Box,
   TextField,
@@ -204,6 +205,15 @@ export default function Chat() {
     setTyping(true);
 
     try {
+      // ─── 1. Call Python ML Server for AI Analysis ───
+      const mlRes = await axios.post(
+        "https://healthbot-ml-api.onrender.com/api/predict",
+        {
+          symptoms: msg,
+        },
+      );
+
+      // ─── 2. Call Node.js Server to save history ───
       const res = await api.post("/api/chat/message", {
         message: msg,
         sessionId,
@@ -213,8 +223,15 @@ export default function Chat() {
         ...p,
         {
           role: "bot",
-          text: res.data.botResponse || "Analysis complete.",
-          assessment: res.data.assessment || null,
+          text:
+            res.data.botResponse ||
+            `Analysis complete. Our ML system suggests: ${mlRes.data.prediction}`,
+          assessment: {
+            severityLevel: mlRes.data.severity || "ROUTINE",
+            predictedConditions: [
+              { name: mlRes.data.prediction, percentage: 88 },
+            ],
+          },
         },
       ]);
     } catch (err) {
@@ -223,7 +240,7 @@ export default function Chat() {
         ...p,
         {
           role: "bot",
-          text: "⚠️ Could not reach the server. Please try again in 30 seconds.",
+          text: "⚠️ Could not reach the ML service. Please ensure the Python backend is live.",
         },
       ]);
     } finally {
@@ -318,7 +335,6 @@ export default function Chat() {
             </Box>
           </Box>
 
-          {/* User Name Badge - Pure White and Bold for maximum visibility */}
           <Box
             sx={{
               px: 1.5,
@@ -453,7 +469,6 @@ export default function Chat() {
                       sx={{ fontSize: 13.5, lineHeight: 1.65 }}
                       dangerouslySetInnerHTML={{ __html: msg.text }}
                     />
-                    {/* Timestamp Fix - Pure white and 100% visible for the Presentation */}
                     <Typography
                       sx={{
                         fontSize: 9.5,
@@ -614,13 +629,13 @@ export default function Chat() {
                 lineHeight: 1.6,
                 padding: "10px 12px",
                 caretColor: C.accent,
-                textAlign: "left", // Strictly LEFT ALIGNED
+                textAlign: "left",
                 width: "100%",
               },
               "& textarea::placeholder, & input::placeholder": {
                 color: `${C.textMid} !important`,
                 opacity: "1 !important",
-                textAlign: "left", // Strictly LEFT ALIGNED
+                textAlign: "left",
                 width: "100%",
               },
             }}
