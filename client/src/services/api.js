@@ -1,8 +1,8 @@
 import axios from "axios";
 
+// CHANGE THIS: Point to the Node.js server, not the ML server
 const api = axios.create({
-  // Line 4 Change:
-  baseURL: "https://healthbot-ml-api.onrender.com",
+  baseURL: "https://healthbot-server-uix0.onrender.com",
 });
 
 // This automatically attaches your JWT token to every request
