@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from "react";
-import axios from "axios"; // Added for direct ML server calls
 import {
   Box,
   TextField,
@@ -205,33 +204,19 @@ export default function Chat() {
     setTyping(true);
 
     try {
-      // ─── 1. Call Python ML Server for AI Analysis ───
-      const mlRes = await axios.post(
-        "https://healthbot-ml-api.onrender.com/api/predict",
-        {
-          symptoms: msg,
-        },
-      );
-
-      // ─── 2. Call Node.js Server to save history ───
-      const res = await api.post("/chat/message", {
+      // 1. Send message to Node.js (Node will handle the AI and Database)
+      const res = await api.post("/api/chat/message", {
         message: msg,
         sessionId,
       });
 
+      // 2. Update the UI with the final response from the server
       setMessages((p) => [
         ...p,
         {
           role: "bot",
-          text:
-            res.data.botResponse ||
-            `Analysis complete. Our ML system suggests: ${mlRes.data.prediction}`,
-          assessment: {
-            severityLevel: mlRes.data.severity || "ROUTINE",
-            predictedConditions: [
-              { name: mlRes.data.prediction, percentage: 88 },
-            ],
-          },
+          text: res.data.botResponse,
+          assessment: res.data.assessment,
         },
       ]);
     } catch (err) {
